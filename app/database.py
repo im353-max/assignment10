@@ -1,68 +1,49 @@
 # app/database.py
 
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
-
 from .config import settings
 
-import os
-if "PYTEST_CURRENT_TEST" in os.environ:
-    settings.DATABASE_URL = "sqlite:///:memory:"
+Base = declarative_base()
 
-def get_engine(database_url: str = settings.DATABASE_URL):
+def get_engine():
     """
-    Create and return a new SQLAlchemy engine.
-
-    Args:
-        database_url (str): The database connection URL.
-
-    Returns:
-        Engine: A new SQLAlchemy Engine instance.
+    Create the engine dynamically so tests can override the DB.
     """
+    # Detect pytest (works locally AND in GitHub Actions)
+    if "PYTEST_CURRENT_TEST" in os.environ or os.getenv("TESTING") == "1":
+        database_url = "sqlite:///:memory:"
+    else:
+        database_url = settings.DATABASE_URL
+
     try:
-        # Create an engine instance with echo=True to log SQL queries (useful for learning)
-        engine = create_engine(database_url, echo=True)
-        return engine
+        return create_engine(database_url, echo=False)
     except SQLAlchemyError as e:
         print(f"Error creating engine: {e}")
         raise
 
-def get_sessionmaker(engine):
-    """
-    Create and return a new sessionmaker.
 
-    Args:
-        engine (Engine): The SQLAlchemy Engine to bind the sessionmaker to.
-
-    Returns:
-        sessionmaker: A configured sessionmaker factory.
+def get_sessionmaker():
     """
+    Return a new sessionmaker bound to a dynamically created engine.
+    """
+    engine = get_engine()
     return sessionmaker(
-        autocommit=False,  # Disable autocommit to control transactions manually
-        autoflush=False,   # Disable autoflush to control when changes are sent to the DB
-        bind=engine        # Bind the sessionmaker to the provided engine
+        autocommit=False,
+        autoflush=False,
+        bind=engine
     )
 
-# Initialize engine and SessionLocal using the factory functions
-engine = get_engine()
-SessionLocal = get_sessionmaker(engine)
-
-# Base declarative class that our models will inherit from
-Base = declarative_base()
 
 def get_db():
     """
-    Dependency function that provides a database session.
-
-    This function can be used with FastAPI's dependency injection system
-    to provide a database session to your route handlers.
-
-    Yields:
-        Session: A SQLAlchemy Session instance.
+    Dependency that provides a DB session.
     """
-    db = SessionLocal()  # Create a new database session
+    SessionLocal = get_sessionmaker()
+    db = SessionLocal()
     try:
-        yield db  # Provide the session to the caller
+        yield db
     finally:
-        db.close()  # Ensure the session is closed after use
+        db.close()
