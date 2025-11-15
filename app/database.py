@@ -6,21 +6,20 @@ from .config import settings
 
 Base = declarative_base()
 
-def get_engine():
+def get_engine(database_url: str | None = None):
     """
     Create the engine dynamically so tests can override the DB.
     """
+    # If provided, tests override the DB
+    if database_url is not None:
+        return create_engine(database_url)
+
     # Detect pytest (works locally AND in GitHub Actions)
     if "PYTEST_CURRENT_TEST" in os.environ or os.getenv("TESTING") == "1":
-        database_url = "sqlite:///:memory:"
-    else:
-        database_url = settings.DATABASE_URL
+        return create_engine("postgresql://postgres:postgres@localhost:5432/test_db")
 
-    try:
-        return create_engine(database_url, echo=False)
-    except SQLAlchemyError as e:
-        print(f"Error creating engine: {e}")
-        raise
+    # Default production engine
+    return create_engine(settings.DATABASE_URL)
 
 
 def get_sessionmaker():
