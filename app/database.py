@@ -22,16 +22,18 @@ def get_engine(database_url: str | None = None):
     return create_engine(settings.DATABASE_URL)
 
 
-def get_sessionmaker():
+def get_sessionmaker(engine=None):
     """
-    Return a new sessionmaker bound to a dynamically created engine.
+    Create a SQLAlchemy sessionmaker.
+    If `engine` is provided, use it; otherwise, use default engine.
     """
-    engine = get_engine()
-    return sessionmaker(
-        autocommit=False,
-        autoflush=False,
-        bind=engine
-    )
+    from .config import settings
+    from sqlalchemy import create_engine
+
+    if engine is None:
+        engine = create_engine(settings.DATABASE_URL)
+
+    return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def get_db():
