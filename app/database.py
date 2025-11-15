@@ -6,6 +6,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .config import settings
 
+import os
+if "PYTEST_CURRENT_TEST" in os.environ:
+    settings.DATABASE_URL = "sqlite:///:memory:"
+
 def get_engine(database_url: str = settings.DATABASE_URL):
     """
     Create and return a new SQLAlchemy engine.
