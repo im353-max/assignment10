@@ -36,9 +36,8 @@ Faker.seed(12345)
 
 logger.info(f"Using database URL: {settings.DATABASE_URL}")
 
-
-# Instead of hardcoding settings.DATABASE_URL
-test_engine = get_engine()  # automatically picks up DATABASE_URL env var
+# Create an engine and sessionmaker based on DATABASE_URL using factory functions
+test_engine = get_engine(database_url=settings.DATABASE_URL)
 TestingSessionLocal = get_sessionmaker(engine=test_engine)
 
 # ======================================================================================
